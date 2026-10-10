@@ -102,7 +102,7 @@ export async function handleGeneratePlan(request: Request): Promise<Response> {
   }
 
   let model: LanguageModel;
-  let providerOptions: Record<string, Record<string, unknown>> | undefined;
+  let openaiOptions: Record<string, unknown> | undefined;
   if (lovableKey) {
     const provider = createOpenAI({
       baseURL: "https://ai.gateway.lovable.dev/v1",
@@ -110,14 +110,12 @@ export async function handleGeneratePlan(request: Request): Promise<Response> {
       headers: { "Lovable-API-Key": lovableKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
     });
     model = provider.responses("openai/gpt-6-astra");
-    providerOptions = {
-      openai: {
-        forceReasoning: true,
-        reasoningEffort: "low",
-        reasoningSummary: "auto",
-        store: false,
-        include: ["reasoning.encrypted_content"],
-      },
+    openaiOptions = {
+      forceReasoning: true,
+      reasoningEffort: "low",
+      reasoningSummary: "auto",
+      store: false,
+      include: ["reasoning.encrypted_content"],
     };
   } else {
     const google = createGoogleGenerativeAI({ apiKey: geminiKey! });
