@@ -1,6 +1,8 @@
-// Server-only: builds the prompt and streams a plan from Lovable AI.
+// Server-only: builds the prompt and streams a plan from Lovable AI,
+// falling back to Google Gemini when LOVABLE_API_KEY is unavailable (e.g. Vercel).
 import { createOpenAI } from "@ai-sdk/openai";
-import { streamText } from "ai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { streamText, type LanguageModel } from "ai";
 import { z } from "zod";
 
 export const ERROR_MARKER = "\u0000ERROR:";
