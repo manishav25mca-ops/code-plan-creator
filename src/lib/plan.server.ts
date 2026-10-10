@@ -126,8 +126,9 @@ export async function handleGeneratePlan(request: Request): Promise<Response> {
       include: ["reasoning.encrypted_content"],
     };
   } else {
+    // Current stable Flash model on the Gemini API (gemini-2.5-flash is legacy).
     const google = createGoogleGenerativeAI({ apiKey: geminiKey! });
-    model = google("gemini-2.5-flash");
+    model = google("gemini-3.8-flash");
   }
 
   const result = streamText({
