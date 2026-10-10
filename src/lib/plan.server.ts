@@ -102,7 +102,15 @@ export async function handleGeneratePlan(request: Request): Promise<Response> {
   }
 
   let model: LanguageModel;
-  let openaiOptions: Record<string, unknown> | undefined;
+  let openaiOptions:
+    | {
+        forceReasoning: true;
+        reasoningEffort: "low";
+        reasoningSummary: "auto";
+        store: false;
+        include: ["reasoning.encrypted_content"];
+      }
+    | undefined;
   if (lovableKey) {
     const provider = createOpenAI({
       baseURL: "https://ai.gateway.lovable.dev/v1",
