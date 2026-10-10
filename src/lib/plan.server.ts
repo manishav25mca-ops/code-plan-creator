@@ -1,6 +1,8 @@
-// Server-only: builds the prompt and streams a plan from Lovable AI.
+// Server-only: builds the prompt and streams a plan from Lovable AI,
+// falling back to Google Gemini when LOVABLE_API_KEY is unavailable (e.g. Vercel).
 import { createOpenAI } from "@ai-sdk/openai";
-import { streamText } from "ai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { streamText, type LanguageModel } from "ai";
 import { z } from "zod";
 
 export const ERROR_MARKER = "\u0000ERROR:";
@@ -93,29 +95,47 @@ export async function handleGeneratePlan(request: Request): Promise<Response> {
     return json(400, { error: parsed.error.issues[0]?.message ?? "Invalid input." });
   }
 
-  const apiKey = process.env["LOVABLE_API_KEY"];
-  if (!apiKey) return json(500, { error: "The AI service is not configured (missing API key)." });
+  const lovableKey = process.env["LOVABLE_API_KEY"];
+  const geminiKey = process.env["GEMINI_API_KEY"];
+  if (!lovableKey && !geminiKey) {
+    return json(500, { error: "The AI service is not configured (missing API key)." });
+  }
 
-  const provider = createOpenAI({
-    baseURL: "https://ai.gateway.lovable.dev/v1",
-    apiKey,
-    headers: { "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
-  });
+  let model: LanguageModel;
+  let openaiOptions:
+    | {
+        forceReasoning: true;
+        reasoningEffort: "low";
+        reasoningSummary: "auto";
+        store: false;
+        include: ["reasoning.encrypted_content"];
+      }
+    | undefined;
+  if (lovableKey) {
+    const provider = createOpenAI({
+      baseURL: "https://ai.gateway.lovable.dev/v1",
+      apiKey: lovableKey,
+      headers: { "Lovable-API-Key": lovableKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
+    });
+    model = provider.responses("openai/gpt-6-astra");
+    openaiOptions = {
+      forceReasoning: true,
+      reasoningEffort: "low",
+      reasoningSummary: "auto",
+      store: false,
+      include: ["reasoning.encrypted_content"],
+    };
+  } else {
+    const google = createGoogleGenerativeAI({ apiKey: geminiKey! });
+    model = google("gemini-2.5-flash");
+  }
 
   const result = streamText({
-    model: provider.responses("openai/gpt-6-astra"),
+    model,
     instructions: SYSTEM_PROMPT,
     messages: [{ role: "user", content: buildUserPrompt(parsed.data) }],
     abortSignal: request.signal,
-    providerOptions: {
-      openai: {
-        forceReasoning: true,
-        reasoningEffort: "low",
-        reasoningSummary: "auto",
-        store: false,
-        include: ["reasoning.encrypted_content"],
-      },
-    },
+    ...(openaiOptions ? { providerOptions: { openai: openaiOptions } } : {}),
   });
 
   const encoder = new TextEncoder();
