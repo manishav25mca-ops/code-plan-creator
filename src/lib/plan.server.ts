@@ -127,7 +127,7 @@ export async function handleGeneratePlan(request: Request): Promise<Response> {
     instructions: SYSTEM_PROMPT,
     messages: [{ role: "user", content: buildUserPrompt(parsed.data) }],
     abortSignal: request.signal,
-    providerOptions,
+    ...(openaiOptions ? { providerOptions: { openai: openaiOptions } } : {}),
   });
 
   const encoder = new TextEncoder();
