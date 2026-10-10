@@ -95,21 +95,22 @@ export async function handleGeneratePlan(request: Request): Promise<Response> {
     return json(400, { error: parsed.error.issues[0]?.message ?? "Invalid input." });
   }
 
-  const apiKey = process.env["LOVABLE_API_KEY"];
-  if (!apiKey) return json(500, { error: "The AI service is not configured (missing API key)." });
+  const lovableKey = process.env["LOVABLE_API_KEY"];
+  const geminiKey = process.env["GEMINI_API_KEY"];
+  if (!lovableKey && !geminiKey) {
+    return json(500, { error: "The AI service is not configured (missing API key)." });
+  }
 
-  const provider = createOpenAI({
-    baseURL: "https://ai.gateway.lovable.dev/v1",
-    apiKey,
-    headers: { "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
-  });
-
-  const result = streamText({
-    model: provider.responses("openai/gpt-6-astra"),
-    instructions: SYSTEM_PROMPT,
-    messages: [{ role: "user", content: buildUserPrompt(parsed.data) }],
-    abortSignal: request.signal,
-    providerOptions: {
+  let model: LanguageModel;
+  let providerOptions: Record<string, Record<string, unknown>> | undefined;
+  if (lovableKey) {
+    const provider = createOpenAI({
+      baseURL: "https://ai.gateway.lovable.dev/v1",
+      apiKey: lovableKey,
+      headers: { "Lovable-API-Key": lovableKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
+    });
+    model = provider.responses("openai/gpt-6-astra");
+    providerOptions = {
       openai: {
         forceReasoning: true,
         reasoningEffort: "low",
@@ -117,7 +118,18 @@ export async function handleGeneratePlan(request: Request): Promise<Response> {
         store: false,
         include: ["reasoning.encrypted_content"],
       },
-    },
+    };
+  } else {
+    const google = createGoogleGenerativeAI({ apiKey: geminiKey! });
+    model = google("gemini-2.5-flash");
+  }
+
+  const result = streamText({
+    model,
+    instructions: SYSTEM_PROMPT,
+    messages: [{ role: "user", content: buildUserPrompt(parsed.data) }],
+    abortSignal: request.signal,
+    providerOptions,
   });
 
   const encoder = new TextEncoder();
