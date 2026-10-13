@@ -9,9 +9,9 @@ import { planToMarkdown, streamPlan, type ProjectDetails } from "@/lib/plan-api"
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Project Planning Agent — AI plans for student software projects" },
+      { title: "Code Plan Creator — AI plans for student software projects" },
       { name: "description", content: "Turn a software project idea into modules, tasks, milestones, a testing plan and risks in seconds." },
-      { property: "og:title", content: "Project Planning Agent" },
+      { property: "og:title", content: "Code Plan Creator" },
       { property: "og:description", content: "Turn a student software project idea into a complete, practical project plan with AI." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
